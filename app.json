@@ -1,14 +1,15 @@
 {
   "expo": {
-    "name": "ImagePredictionApp",
+    "name": "SMITA",
     "slug": "ImagePredictionApp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo2.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "jsEngine": "hermes",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/logo2.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -17,12 +18,18 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/logo2.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.saffireghost.ImagePredictionApp"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/logo2.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "1d20b135-4e04-4e29-a13d-3bbdb04b932b"
+      }
     }
   }
 }
