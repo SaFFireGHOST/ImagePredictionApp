@@ -500,12 +500,19 @@ def submit_feedback():
     user_id = get_jwt_identity()
     data = request.get_json()
     answers = data.get('answers', [])
+    text_feedback = data.get('textFeedback', '')
 
-    if not answers or len(answers) != 7:
+    if not answers or len(answers) != 6:
         return jsonify({"message": "All questions must be answered."}), 400
 
-    feedbacks.insert_one({"userId": user_id, "answers": answers})
+    feedbacks.insert_one({
+        "userId": user_id,
+        "answers": answers,
+        "textFeedback": text_feedback
+    })
+
     return jsonify({"message": "Feedback submitted successfully"}), 200
+
 
 @app.route('/admin/feedbacks', methods=['GET'])
 @jwt_required()

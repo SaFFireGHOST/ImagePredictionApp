@@ -1,49 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import {
+  ScrollView,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  TextInput
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons } from '@expo/vector-icons'; // Make sure you have @expo/vector-icons installed
+import { Ionicons } from '@expo/vector-icons';
 
+// Sample questions (replace with actual questions or import from constants)
 const questions = [
-  "How easy is it to navigate the app?",
-  "How satisfied are you with the features available in the app?",
-  "How would you rate the accuracy of the diagnosis results?",
-  "How smooth was the image uploading process?",
   "How simple was the registration and login process?",
-  "How would you rate the app’s performance (speed, responsiveness)?",
+  "How easy is it to navigate the app?",
+  "How smooth was the image uploading process?",
+  "How satisfied are you with the features available in the app?",
+  "How would you rate the app's performance (speed, responsiveness)?",
   "How would you rate your overall experience with the app?",
 ];
 
-
-const ratingLabels = ["Poor", "Fair", "Good", "Very Good", "Excellent"];
+const ratingLabels = ["Excellent", "Good", "Poor"]; // Updated options
 
 const FeedbackFormScreen = ({ navigation, API_URL }) => {
   const [answers, setAnswers] = useState(Array(questions.length).fill(null));
   const [submitted, setSubmitted] = useState(false);
+  const [textFeedback, setTextFeedback] = useState("");
+  const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {
-    const checkFeedback = async () => {
-      try {
-        const token = await AsyncStorage.getItem('authToken');
-        if (!token) return;
-
-        const res = await fetch(`${API_URL}/check_feedback`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          }
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          setSubmitted(data.submitted);
-        }
-      } catch (err) {
-        console.error('Error checking feedback status', err);
-      }
-    };
-
-    checkFeedback();
-  }, []);
+    // Check if all required fields are filled
+    const allRequiredFieldsFilled = answers.every(answer => answer !== null);
+    setIsComplete(allRequiredFieldsFilled);
+  }, [answers]);
 
   const handleSubmit = async () => {
     if (submitted) {
@@ -51,9 +41,8 @@ const FeedbackFormScreen = ({ navigation, API_URL }) => {
       return;
     }
 
-    const isComplete = answers.every(answer => answer !== null);
     if (!isComplete) {
-      Alert.alert('Incomplete', 'Please rate all questions.');
+      Alert.alert('Incomplete', 'Please rate all questions before submitting.');
       return;
     }
 
@@ -70,7 +59,7 @@ const FeedbackFormScreen = ({ navigation, API_URL }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ answers }),
+        body: JSON.stringify({ answers, textFeedback }),
         mode: 'cors'
       });
 
@@ -89,21 +78,36 @@ const FeedbackFormScreen = ({ navigation, API_URL }) => {
     }
   };
 
+  // Count how many questions have been answered
+  const answeredCount = answers.filter(answer => answer !== null).length;
+
   return (
     <ScrollView
       style={styles.container}
       keyboardShouldPersistTaps='handled'
-      contentContainerStyle={{ paddingBottom: 50 }}>
+      contentContainerStyle={{ paddingBottom: 80 }}
+    >
       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
         <Ionicons name="arrow-back" size={24} color="#007bff" />
         <Text style={styles.backText}>Back</Text>
       </TouchableOpacity>
 
       <Text style={styles.title}>App Feedback Form</Text>
+      
+      <View style={styles.requirementNote}>
+        <Text style={styles.noteText}>
+          <Text style={styles.requiredText}>*</Text> Please answer all required questions ({answeredCount}/{questions.length} completed)
+        </Text>
+        <Text style={styles.noteText}>
+          Submit button will be enabled once all required fields are filled
+        </Text>
+      </View>
 
       {questions.map((q, index) => (
         <View key={index} style={styles.questionBlock}>
-          <Text style={styles.question}>{index + 1}. {q}</Text>
+          <Text style={styles.question}>
+            <Text style={styles.requiredText}>*</Text> {index + 1}. {q}
+          </Text>
           <View style={styles.ratingContainer}>
             {ratingLabels.map((label, i) => (
               <TouchableOpacity
@@ -118,10 +122,12 @@ const FeedbackFormScreen = ({ navigation, API_URL }) => {
                   setAnswers(updated);
                 }}
               >
-                <Text style={[
-                  styles.ratingText,
-                  answers[index] === i + 1 ? styles.selectedText : null
-                ]}>
+                <Text
+                  style={[
+                    styles.ratingText,
+                    answers[index] === i + 1 ? styles.selectedText : null
+                  ]}
+                >
                   {label}
                 </Text>
               </TouchableOpacity>
@@ -129,8 +135,26 @@ const FeedbackFormScreen = ({ navigation, API_URL }) => {
           </View>
         </View>
       ))}
+
+      <Text style={styles.optionalLabel}>Additional Comments (optional)</Text>
+      <TextInput
+        style={styles.textInput}
+        placeholder="Write your suggestions or comments here..."
+        value={textFeedback}
+        onChangeText={setTextFeedback}
+        multiline
+        numberOfLines={4}
+      />
+
       {!submitted && (
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+        <TouchableOpacity 
+          style={[
+            styles.submitButton, 
+            !isComplete && styles.disabledButton
+          ]} 
+          onPress={handleSubmit}
+          disabled={!isComplete}
+        >
           <Text style={styles.submitButtonText}>Submit Feedback</Text>
         </TouchableOpacity>
       )}
@@ -139,49 +163,102 @@ const FeedbackFormScreen = ({ navigation, API_URL }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 16 },
+  container: {
+    flex: 1,
+    backgroundColor: '#f9f9f9',
+    padding: 16,
+  },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   backText: {
-    color: '#007bff',
+    marginLeft: 8,
     fontSize: 16,
-    marginLeft: 6,
+    color: '#007bff',
   },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 20 },
-  questionBlock: { marginBottom: 24 },
-  question: { fontSize: 16, marginBottom: 10 },
-  ratingContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  requirementNote: {
+    backgroundColor: '#f0f7ff',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  noteText: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 4,
+  },
+  requiredText: {
+    color: '#ff3b30',
+    fontWeight: 'bold',
+  },
+  questionBlock: {
+    marginBottom: 20,
+  },
+  question: {
+    fontSize: 16,
+    marginBottom: 10,
+    color: '#333',
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
   ratingOption: {
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 14,
-    borderRadius: 6,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#ccc',
-    backgroundColor: '#f0f0f0',
-    margin: 4,
-    minWidth: 80,
-    alignItems: 'center',
+    backgroundColor: '#fff',
   },
   selectedOption: {
     backgroundColor: '#007bff',
     borderColor: '#007bff',
   },
-  ratingText: { color: '#000' },
-  selectedText: { color: '#fff', fontWeight: 'bold' },
+  ratingText: {
+    color: '#333',
+    fontSize: 14,
+  },
+  selectedText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  optionalLabel: {
+    fontSize: 16,
+    marginBottom: 8,
+    color: '#333',
+  },
+  textInput: {
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    textAlignVertical: 'top',
+    marginBottom: 20,
+    backgroundColor: '#fff',
+  },
   submitButton: {
-    backgroundColor: '#007bff',
-    padding: 14,
+    backgroundColor: '#28a745',
+    paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 20,
+  },
+  disabledButton: {
+    backgroundColor: '#8BC34A',
+    opacity: 0.7,
   },
   submitButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold'
+    fontWeight: 'bold',
   },
 });
 

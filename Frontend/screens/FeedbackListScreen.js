@@ -7,16 +7,19 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   SafeAreaView,
-  RefreshControl
+  RefreshControl,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import LoadingOverlay from './LoadingOverlay'; // Adjust the import path as needed
 
 const FeedbackListScreen = ({ navigation, route, API_URL }) => {
   const [userFeedbacks, setUserFeedbacks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [isResetting, setIsResetting] = useState(false); // For LoadingOverlay
 
   // If a specific userId is passed in route params, only show that user's feedback
   const specificUserId = route.params?.userId;
@@ -67,12 +70,11 @@ const FeedbackListScreen = ({ navigation, route, API_URL }) => {
 
   // Questions from your feedback form
   const questions = [
-    "How easy is it to navigate the app?",
-    "How satisfied are you with the features available in the app?",
-    "How would you rate the accuracy of the diagnosis results?",
-    "How smooth was the image uploading process?",
     "How simple was the registration and login process?",
-    "How would you rate the app’s performance (speed, responsiveness)?",
+    "How easy is it to navigate the app?",
+    "How smooth was the image uploading process?",
+    "How satisfied are you with the features available in the app?",
+    "How would you rate the app's performance (speed, responsiveness)?",
     "How would you rate your overall experience with the app?",
   ];
 
@@ -118,6 +120,14 @@ const FeedbackListScreen = ({ navigation, route, API_URL }) => {
           </View>
         ))}
       </View>
+      
+      {/* Comment section with conditional rendering for no comments */}
+      <View style={styles.commentContainer}>
+        <Text style={styles.commentLabel}>Additional Comments:</Text>
+        <Text style={styles.commentText}>
+          {item.textFeedback ? item.textFeedback : "No additional comments"}
+        </Text>
+      </View>
     </View>
   );
 
@@ -142,13 +152,14 @@ const FeedbackListScreen = ({ navigation, route, API_URL }) => {
   }
 
   const handleResetFeedback = async () => {
+    setIsResetting(true); // Show loading overlay
     try {
       // Retrieve token from AsyncStorage
       const token = await AsyncStorage.getItem('authToken');
       if (!token) {
-          setLoading(false);
-          console.log("Unauthorized", "You are not logged in.");
-          return;
+        setIsResetting(false);
+        console.log("Unauthorized", "You are not logged in.");
+        return;
       }
       const response = await fetch(`${API_URL}/reset-feedback`, {
         method: 'DELETE',
@@ -163,22 +174,26 @@ const FeedbackListScreen = ({ navigation, route, API_URL }) => {
       if (response.ok) {
         console.log('Success', data.message);
         await fetchFeedbacks();
-        
       } else {
         console.log('Error', data.message || 'Failed to reset feedback.');
       }
     } catch (error) {
       console.error('Reset feedback error:', error);
       // Alert.alert('Error', 'An error occurred while resetting feedback.');
+    } finally {
+      setIsResetting(false); // Hide loading overlay
     }
   };
 
-
   return (
     <SafeAreaView style={styles.container}>
+      {/* Loading overlay */}
+      <LoadingOverlay visible={isResetting} message="Resetting feedback data..." />
+      
       <TouchableOpacity style={styles.logoutButton} onPress={handleResetFeedback}>
-        <Text style={styles.logoutButtonText}>Reset Feeback</Text>
+        <Text style={styles.logoutButtonText}>Reset Feedback</Text>
       </TouchableOpacity>
+      
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -258,6 +273,25 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 30
   },
+  commentContainer: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#ecf0f1',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  commentLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2c3e50',
+    marginBottom: 4,
+  },
+  commentText: {
+    fontSize: 14,
+    color: '#7f8c8d',
+    fontStyle: 'italic',
+  },  
   loader: {
     flex: 1,
     justifyContent: 'center',
