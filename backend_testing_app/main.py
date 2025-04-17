@@ -266,23 +266,23 @@ def prepare_image(image):
 #         if 'image' not in request.files:
 #             return jsonify({'error': 'No image provided'}), 400
 
-#         image_file = request.files['image']
+        # image_file = request.files['image']
 
-#         # Upload image to Cloudinary
-#         upload_result = cloudinary.uploader.upload(image_file)
-#         image_url = upload_result.get("secure_url")  # Get Cloudinary image URL
+        # # Upload image to Cloudinary
+        # upload_result = cloudinary.uploader.upload(image_file)
+        # image_url = upload_result.get("secure_url")  # Get Cloudinary image URL
 
-#         # Process image with model
-#         image = prepare_image(image_file)
-#         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-#         model.to(device)
-#         image = image.to(device)
+        # # Process image with model
+        # image = prepare_image(image_file)
+        # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        # model.to(device)
+        # image = image.to(device)
 
-#         with torch.no_grad():
-#             outputs = model(image)
-#             probabilities = torch.softmax(outputs, dim=1)
-#             prediction = torch.argmax(outputs, dim=1).item()
-#             confidence = f"{probabilities[0][prediction].item():.2%}"
+        # with torch.no_grad():
+        #     outputs = model(image)
+        #     probabilities = torch.softmax(outputs, dim=1)
+        #     prediction = torch.argmax(outputs, dim=1).item()
+        #     confidence = f"{probabilities[0][prediction].item():.2%}"
 
 #         # Store form data in MongoDB (including Cloudinary URL)
 #         form_data = {
@@ -321,18 +321,98 @@ def prepare_image(image):
 #         return jsonify({'error': str(e)}), 500
 
 
+# @app.route('/form_submit', methods=['POST'])
+# @jwt_required()
+# def form_submit():
+#     try:
+#         current_user_email = get_jwt_identity()
+
+#         image_urls = {}
+#         for key in ['dorsal', 'ventral', 'leftBuccal', 'rightBuccal', 'upperLip', 'lowerLip', 'upperArch', 'lowerArch']:
+#             file = request.files.get(key)
+#             if file:
+#                 upload_result = cloudinary.uploader.upload(file)
+#                 image_urls[key] = upload_result.get("secure_url")
+
+#         form_data = {
+#             'date': request.form.get('date'),
+#             'smitaId': request.form.get('smitaId'),
+#             'firstName': request.form.get('firstName'),
+#             'lastName': request.form.get('lastName'),
+#             'prefix': request.form.get('prefix'),
+#             'age': request.form.get('age'),
+#             'sex': request.form.get('sex'),
+#             'religion': request.form.get('religion'),
+#             'maritalStatus': request.form.get('maritalStatus'),
+#             'education': request.form.get('education'),
+#             'occupation': request.form.get('occupation'),
+#             'income': request.form.get('income'),
+#             'phoneNumber': request.form.get('phoneNumber'),
+#             'address': request.form.get('address'),
+#             'type': request.form.get('type'),
+#             'user_email': current_user_email,
+#             'timestamp': datetime.utcnow()
+#         }
+
+#         # Add predictions and image URLs
+#         for key in ['dorsal', 'ventral', 'leftBuccal', 'rightBuccal', 'upperLip', 'lowerLip', 'upperArch', 'lowerArch']:
+#             prediction = request.form.get(f"{key}_prediction")
+#             confidence = request.form.get(f"{key}_confidence")
+#             if prediction and confidence:
+#                 form_data[f'{key}_prediction'] = prediction
+#                 form_data[f'{key}_confidence'] = confidence
+#             if key in image_urls:
+#                 form_data[f'{key}_image_url'] = image_urls[key]
+
+#         users.update_one({"email": current_user_email}, {"$push": {"form_submissions": form_data}})
+
+#         return jsonify({
+#             "message": "Form submitted and stored successfully",
+#             "data": form_data
+#         }), 200
+
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
+
+
 @app.route('/form_submit', methods=['POST'])
 @jwt_required()
 def form_submit():
     try:
         current_user_email = get_jwt_identity()
 
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        model.to(device)
+        model.eval()
+
         image_urls = {}
-        for key in ['dorsal', 'ventral', 'leftBuccal', 'rightBuccal', 'upperLip', 'lowerLip', 'upperArch', 'lowerArch']:
-            file = request.files.get(key)
+        predictions = {}
+
+        regions = ['dorsal', 'ventral', 'leftBuccal', 'rightBuccal',
+                   'upperLip', 'lowerLip', 'upperArch', 'lowerArch']
+
+        for region in regions:
+            file = request.files.get(region)
             if file:
+                # Upload image to Cloudinary
                 upload_result = cloudinary.uploader.upload(file)
-                image_urls[key] = upload_result.get("secure_url")
+                image_url = upload_result.get("secure_url")
+                image_urls[region] = image_url
+
+                # Prepare and predict using the model
+                image = prepare_image(file)
+                image = image.to(device)
+
+                with torch.no_grad():
+                    outputs = model(image)
+                    probabilities = torch.softmax(outputs, dim=1)
+                    pred_class = torch.argmax(probabilities, dim=1).item()
+                    confidence = f"{probabilities[0][pred_class].item():.2%}"
+
+                predictions[region] = {
+                    "prediction": "Lesion" if pred_class == 1 else "Normal",
+                    "confidence": confidence
+                }
 
         form_data = {
             'date': request.form.get('date'),
@@ -354,15 +434,13 @@ def form_submit():
             'timestamp': datetime.utcnow()
         }
 
-        # Add predictions and image URLs
-        for key in ['dorsal', 'ventral', 'leftBuccal', 'rightBuccal', 'upperLip', 'lowerLip', 'upperArch', 'lowerArch']:
-            prediction = request.form.get(f"{key}_prediction")
-            confidence = request.form.get(f"{key}_confidence")
-            if prediction and confidence:
-                form_data[f'{key}_prediction'] = prediction
-                form_data[f'{key}_confidence'] = confidence
-            if key in image_urls:
-                form_data[f'{key}_image_url'] = image_urls[key]
+        # Add prediction results and image URLs to form_data
+        for region in regions:
+            if region in predictions:
+                form_data[f"{region}_prediction"] = predictions[region]['prediction']
+                form_data[f"{region}_confidence"] = predictions[region]['confidence']
+            if region in image_urls:
+                form_data[f"{region}_image_url"] = image_urls[region]
 
         users.update_one({"email": current_user_email}, {"$push": {"form_submissions": form_data}})
 
@@ -373,6 +451,7 @@ def form_submit():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 
 @app.route('/predict', methods=['POST'])

@@ -24,8 +24,8 @@ const App = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true); // NEW: Loading state
 
-  // const API_URL = 'http://10.0.2.2:8080';
-  const API_URL = 'http://localhost:8080';
+  const API_URL = 'http://10.0.2.2:8080';
+  // const API_URL = 'http://localhost:8080';
   // const API_URL = 'https://backend-app-t0ym.onrender.com';
 
   useEffect(() => {

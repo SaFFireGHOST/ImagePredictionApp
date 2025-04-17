@@ -90,7 +90,7 @@ const DashboardHeader = () => {
 
 // DashboardNav Component
 const DashboardNav = () => {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const currentPath = '/dashboard'; // Mock current path for active state
 
   const navItems = [

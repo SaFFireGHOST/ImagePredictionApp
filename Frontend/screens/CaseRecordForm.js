@@ -279,13 +279,13 @@ export default function CaseRecordForm({ API_URL }) {
         formData.append("address", address);
         formData.append("type", type);
     
-        // Attach predictions
-        Object.entries(predictions).forEach(([key, value]) => {
-            if (value) {
-                formData.append(`${key}_prediction`, value.prediction);
-                formData.append(`${key}_confidence`, value.confidence);
-            }
-        });
+        // // Attach predictions
+        // Object.entries(predictions).forEach(([key, value]) => {
+        //     if (value) {
+        //         formData.append(`${key}_prediction`, value.prediction);
+        //         formData.append(`${key}_confidence`, value.confidence);
+        //     }
+        // });
     
         // Attach images (optional: for cloudinary upload in backend)
         Object.entries(imageFiles).forEach(([key, file]) => {
@@ -786,14 +786,14 @@ export default function CaseRecordForm({ API_URL }) {
                     </TouchableOpacity>
                 </View>
                 {/* Feedback Form Button */}
-                <View style={styles.feedbackButtonContainer}>
+                {/* <View style={styles.feedbackButtonContainer}>
                     <TouchableOpacity
                         style={[styles.button, styles.feedbackButton]}
                         onPress={handleFeedbackPress}
                     >
                         <Text style={styles.buttonText}>Give Feedback</Text>
                     </TouchableOpacity>
-                </View>
+                </View> */}
 
                 {prediction && (
                     <View
