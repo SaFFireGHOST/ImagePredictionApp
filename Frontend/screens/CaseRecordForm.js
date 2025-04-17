@@ -175,22 +175,93 @@ export default function CaseRecordForm({ API_URL }) {
     //     }
     // };
 
+    // const handleSubmit = async () => {
+    //     if (!imageFile) {
+    //         Alert.alert("Error", "Please upload an image first");
+    //         return;
+    //     }
+
+    //     setLoading(true);
+
+    //     // Retrieve token from AsyncStorage
+    //     const token = await AsyncStorage.getItem('authToken');
+    //     if (!token) {
+    //         setLoading(false);
+    //         Alert.alert("Unauthorized", "You are not logged in.");
+    //         return;
+    //     }
+
+    //     const formData = new FormData();
+    //     formData.append("date", date.toISOString().split("T")[0]);
+    //     formData.append("smitaId", smitaId);
+    //     formData.append("firstName", firstName);
+    //     formData.append("lastName", lastName);
+    //     formData.append("prefix", prefix);
+    //     formData.append("age", age);
+    //     formData.append("sex", sex);
+    //     formData.append("religion", religion);
+    //     formData.append("maritalStatus", maritalStatus);
+    //     formData.append("education", education);
+    //     formData.append("occupation", occupation);
+    //     formData.append("income", income);
+    //     formData.append("phoneNumber", phoneNumber);
+    //     formData.append("address", address);
+    //     formData.append("type", type);
+
+    //     // Append image
+    //     if (Platform.OS === 'web') {
+    //         formData.append('image', imageFile);
+    //     } else {
+    //         formData.append('image', {
+    //             uri: imageFile.uri,
+    //             type: imageFile.type || 'image/jpeg',
+    //             name: imageFile.fileName || 'image.jpg',
+    //         });
+    //     }
+
+    //     try {
+    //         const response = await fetch(`${API_URL}/form_submit`, {
+    //             method: "POST",
+    //             body: formData,
+    //             headers: {
+    //                 'Accept': 'application/json',
+    //                 'Authorization': `Bearer ${token}`,
+    //             },
+    //             mode: 'cors',
+    //             credentials: 'omit',
+    //         });
+    //         console.log(response);
+    //         if (!response.ok) {
+    //             const errorText = await response.text();
+    //             console.error('Server response:', errorText);
+    //             throw new Error(`HTTP error! status: ${response.status}`);
+    //         }
+    //         const result = await response.json();
+    //         if (response.ok) {
+    //             console.log("prediction is ", result);
+    //             setPrediction(result);
+    //             Alert.alert("Success", "Form submitted successfully!");
+    //         } else {
+    //             Alert.alert("Error", "Failed to submit the form.");
+    //         }
+    //     } catch (error) {
+    //         console.error("Submission error:", error);
+    //         Alert.alert("Error", "Something went wrong.");
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // };
+
     const handleSubmit = async () => {
-        if (!imageFile) {
-            Alert.alert("Error", "Please upload an image first");
-            return;
-        }
-
         setLoading(true);
-
-        // Retrieve token from AsyncStorage
+    
         const token = await AsyncStorage.getItem('authToken');
         if (!token) {
             setLoading(false);
             Alert.alert("Unauthorized", "You are not logged in.");
             return;
         }
-
+    
         const formData = new FormData();
         formData.append("date", date.toISOString().split("T")[0]);
         formData.append("smitaId", smitaId);
@@ -207,18 +278,30 @@ export default function CaseRecordForm({ API_URL }) {
         formData.append("phoneNumber", phoneNumber);
         formData.append("address", address);
         formData.append("type", type);
-
-        // Append image
-        if (Platform.OS === 'web') {
-            formData.append('image', imageFile);
-        } else {
-            formData.append('image', {
-                uri: imageFile.uri,
-                type: imageFile.type || 'image/jpeg',
-                name: imageFile.fileName || 'image.jpg',
-            });
-        }
-
+    
+        // Attach predictions
+        Object.entries(predictions).forEach(([key, value]) => {
+            if (value) {
+                formData.append(`${key}_prediction`, value.prediction);
+                formData.append(`${key}_confidence`, value.confidence);
+            }
+        });
+    
+        // Attach images (optional: for cloudinary upload in backend)
+        Object.entries(imageFiles).forEach(([key, file]) => {
+            if (file) {
+                if (Platform.OS === 'web') {
+                    formData.append(key, file);
+                } else {
+                    formData.append(key, {
+                        uri: file.uri,
+                        type: file.type || 'image/jpeg',
+                        name: file.fileName || `${key}.jpg`,
+                    });
+                }
+            }
+        });
+    
         try {
             const response = await fetch(`${API_URL}/form_submit`, {
                 method: "POST",
@@ -230,20 +313,15 @@ export default function CaseRecordForm({ API_URL }) {
                 mode: 'cors',
                 credentials: 'omit',
             });
-            console.log(response);
+    
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('Server response:', errorText);
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
+    
             const result = await response.json();
-            if (response.ok) {
-                console.log("prediction is ", result);
-                setPrediction(result);
-                Alert.alert("Success", "Form submitted successfully!");
-            } else {
-                Alert.alert("Error", "Failed to submit the form.");
-            }
+            Alert.alert("Success", "Form submitted successfully!");
         } catch (error) {
             console.error("Submission error:", error);
             Alert.alert("Error", "Something went wrong.");
@@ -251,6 +329,8 @@ export default function CaseRecordForm({ API_URL }) {
             setLoading(false);
         }
     };
+    
+
 
     const navigation = useNavigation();  // Get navigation manually
 
