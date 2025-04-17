@@ -62,7 +62,7 @@ const App = () => {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={isAuthenticated ? (isAdmin ? "AdminDashboard" : "UserHomePage") : "LandingPage"}   >
+      <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={isAuthenticated ? (isAdmin ? "AdminDashboard" : "CaseRecord") : "LandingPage"}   >
         <Stack.Screen name="LandingPage" component={LandingPage} />
         <Stack.Screen name="UploadImage" component={UploadImageScreen} />
         <Stack.Screen name="Agreement" component={AgreementScreen} />

@@ -19,7 +19,7 @@ import { Picker } from '@react-native-picker/picker';
 import LoadingOverlay from './LoadingOverlay';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 
-export default function CaseRecordForm({API_URL}) {
+export default function CaseRecordForm({ API_URL }) {
     const [sex, setSex] = useState("");
     const [prefix, setPrefix] = useState("");
     const [religion, setReligion] = useState("");
@@ -38,11 +38,49 @@ export default function CaseRecordForm({API_URL}) {
     const [address, setAddress] = useState("");
 
     const [image, setImage] = useState(null);
+
+    const [images, setImages] = useState({
+        dorsal: null,
+        ventral: null,
+        leftBuccal: null,
+        rightBuccal: null,
+        upperLip: null,
+        lowerLip: null,
+        upperArch: null,
+        lowerArch: null,
+    });
+
+    const [imageFiles, setImageFiles] = useState({
+        dorsal: null,
+        ventral: null,
+        leftBuccal: null,
+        rightBuccal: null,
+        upperLip: null,
+        lowerLip: null,
+        upperArch: null,
+        lowerArch: null,
+    });
+
+
+    const [predictions, setPredictions] = useState({
+        dorsal: null,
+        ventral: null,
+        leftBuccal: null,
+        rightBuccal: null,
+        upperLip: null,
+        lowerLip: null,
+        upperArch: null,
+        lowerArch: null,
+    });
+
+
     const [imageFile, setImageFile] = useState(null);
     const [prediction, setPrediction] = useState(null);
     const [loading, setLoading] = useState(false);
     const fileInputRef = useRef(null);
-    
+
+    const fileInputRefs = useRef({});
+
     // Add error popup state
     const [errorPopupVisible, setErrorPopupVisible] = useState(false);
     const [errorPopupMessage, setErrorPopupMessage] = useState("");
@@ -55,9 +93,38 @@ export default function CaseRecordForm({API_URL}) {
         }
     };
 
-    const handleImageCapture = async (source) => {
+    // const handleImageCapture = async (source) => {
+    //     if (Platform.OS === 'web') {
+    //         fileInputRef.current?.click();
+    //         return;
+    //     }
+
+    //     const options = {
+    //         mediaType: 'photo',
+    //         quality: 1,
+    //     };
+
+    //     try {
+    //         const result = source === 'camera'
+    //             ? await launchCamera(options)
+    //             : await launchImageLibrary(options);
+
+    //         if (result.didCancel) return;
+
+    //         if (result.assets && result.assets[0]) {
+    //             setImage(result.assets[0]);
+    //             setImageFile(result.assets[0]);
+    //             // setPrediction(null); // Reset prediction when new image is selected
+    //         }
+    //     } catch (error) {
+    //         console.error('Error capturing image:', error);
+    //     }
+    // };
+
+
+    const handleImageCaptureWithKey = async (source, key) => {
         if (Platform.OS === 'web') {
-            fileInputRef.current?.click();
+            fileInputRefs.current[key]?.click();
             return;
         }
 
@@ -74,24 +141,39 @@ export default function CaseRecordForm({API_URL}) {
             if (result.didCancel) return;
 
             if (result.assets && result.assets[0]) {
-                setImage(result.assets[0]);
-                setImageFile(result.assets[0]);
-                // setPrediction(null); // Reset prediction when new image is selected
+                setImages((prev) => ({ ...prev, [key]: result.assets[0] }));
+                setImageFiles((prev) => ({ ...prev, [key]: result.assets[0] }));
             }
         } catch (error) {
             console.error('Error capturing image:', error);
         }
     };
 
-    const handleWebImageSelect = (event) => {
+    const handleWebImageSelect = (event, key) => {
         event.preventDefault();
         const file = event.target.files[0];
         if (file) {
-            setImage({ uri: URL.createObjectURL(file) });
-            setImageFile(file);
-            // setPrediction(null); // Reset prediction when new image is selected
+            setImages((prev) => ({
+                ...prev,
+                [key]: { uri: URL.createObjectURL(file) },
+            }));
+            setImageFiles((prev) => ({
+                ...prev,
+                [key]: file,
+            }));
         }
     };
+
+
+    // const handleWebImageSelect = (event) => {
+    //     event.preventDefault();
+    //     const file = event.target.files[0];
+    //     if (file) {
+    //         setImage({ uri: URL.createObjectURL(file) });
+    //         setImageFile(file);
+    //         // setPrediction(null); // Reset prediction when new image is selected
+    //     }
+    // };
 
     const handleSubmit = async () => {
         if (!imageFile) {
@@ -185,18 +267,18 @@ export default function CaseRecordForm({API_URL}) {
                 Alert.alert("Unauthorized", "You are not logged in.");
                 return;
             }
-            
+
             // Check if user has already submitted feedback
             const checkResponse = await fetch(`${API_URL}/check_feedback`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`
                 },
-                mode:'cors'
+                mode: 'cors'
             });
-            
+
             const checkResult = await checkResponse.json();
-            
+
             if (checkResponse.ok) {
                 if (checkResult.submitted) {
                     // Replace console.log with ErrorPopup
@@ -224,15 +306,160 @@ export default function CaseRecordForm({API_URL}) {
         setErrorPopupVisible(false);
     };
 
+    const handlePrediction = async (imageFile, key) => {
+        setLoading(true);
+        setPredictions(prev => ({ ...prev, [key]: null }));
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+            controller.abort();
+        }, 60000);
+
+        try {
+            const formData = new FormData();
+
+            if (Platform.OS === 'web') {
+                formData.append('image', imageFile);
+            } else {
+                formData.append('image', {
+                    uri: Platform.OS === 'ios' ? imageFile.uri.replace('file://', '') : imageFile.uri,
+                    type: imageFile.type,
+                    name: imageFile.fileName || 'image.jpg',
+                });
+            }
+
+            console.log(`Uploading image to: ${API_URL}/predict for ${key}`);
+
+            const response = await fetch(`${API_URL}/predict`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Accept': 'application/json',
+                },
+                signal: controller.signal,
+                mode: 'cors',
+                credentials: 'omit',
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Server response:', errorText);
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            console.log("result is", result);
+            setPredictions(prev => ({ ...prev, [key]: result }));
+        } catch (error) {
+            clearTimeout(timeoutId);
+
+            const errMsg =
+                error.name === 'AbortError'
+                    ? 'Server is busy, Please try again later'
+                    : 'Failed to get prediction';
+
+            console.error(`Error for ${key}:`, error);
+            setPredictions(prev => ({ ...prev, [key]: { error: errMsg } }));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+
+    const renderImageSection = (label, key) => (
+        <View style={styles.imageSection}>
+            <Text style={styles.uploadlabel}>Upload Image of {label} Region`</Text>
+            <View style={styles.imageContainer}>
+                {images[key] ? (
+                    <Image source={{ uri: images[key].uri }} style={styles.image} />
+                ) : (
+                    <Text style={styles.placeholderText}>No image selected</Text>
+                )}
+            </View>
+
+            <View style={styles.buttonRow}>
+                {Platform.OS === 'web' && (
+                    <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) => handleWebImageSelect(event, key)}
+                        ref={(ref) => (fileInputRefs.current[key] = ref)}
+                        style={{ display: 'none' }}
+                    />
+                )}
+
+                <TouchableOpacity
+                    style={[styles.button, styles.photoButton]}
+                    onPress={() => handleImageCaptureWithKey('camera', key)}
+                >
+                    <Text style={styles.buttonText}>Capture Photo 📷</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.button, styles.photoButton]}
+                    onPress={() => handleImageCaptureWithKey('gallery', key)}
+                >
+                    <Text style={styles.buttonText}>Upload Photo</Text>
+                </TouchableOpacity>
+
+                {images[key] && (
+                    <TouchableOpacity
+                        style={[styles.button, styles.predictButton]}
+                        onPress={() => handlePrediction(imageFiles[key], key)}
+                        disabled={loading[key]}
+                    >
+                        <Text style={styles.buttonText}>
+                            {loading[key] ? 'Predicting...' : 'Predict'}
+                        </Text>
+                    </TouchableOpacity>
+                )}
+
+
+
+
+            </View>
+            {predictions[key] && (
+                <View
+                    style={{
+                        ...styles.resultContainer,
+                        backgroundColor:
+                            predictions[key]?.error
+                                ? '#fff3e0' // Optional: light orange for error
+                                : predictions[key].prediction === 'Lesion'
+                                    ? '#ffebee' // Light red
+                                    : '#e8f5e9', // Light green
+                    }}
+                >
+                    {predictions[key]?.error ? (
+                        <Text style={styles.resultText}>{predictions[key].error}</Text>
+                    ) : (
+                        <>
+                            <Text style={styles.resultText}>
+                                Prediction: {predictions[key].prediction}
+                            </Text>
+                            <Text style={styles.resultText}>
+                                Confidence: {predictions[key].confidence}
+                            </Text>
+                        </>
+                    )}
+                </View>
+            )}
+        </View>
+    );
+
+
+
     return (
         <ScrollView style={{ flex: 1 }}>
             <LoadingOverlay visible={loading} message="Submitting ..." />
-            
+
             {/* Add ErrorPopup component */}
-            <ErrorPopup 
-                visible={errorPopupVisible} 
-                message={errorPopupMessage} 
-                onClose={closeErrorPopup} 
+            <ErrorPopup
+                visible={errorPopupVisible}
+                message={errorPopupMessage}
+                onClose={closeErrorPopup}
             />
 
             <View style={styles.container}>
@@ -402,7 +629,7 @@ export default function CaseRecordForm({API_URL}) {
                 </View>
 
                 {/* Age and Sex */}
-                <View style={styles.row}>
+                {/* <View style={styles.row}>
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Image Type</Text>
                         <Picker selectedValue={type} onValueChange={(val) => setType(val)} style={styles.input}>
@@ -418,20 +645,20 @@ export default function CaseRecordForm({API_URL}) {
                             <Picker.Item label="Other" value="other" />
                         </Picker>
                     </View>
-                   
-                </View>
+
+                </View> */}
 
                 {/* Image Preview */}
-                <View style={styles.imageContainer}>
+                {/* <View style={styles.imageContainer}>
                     {image ? (
                         <Image source={{ uri: image.uri }} style={styles.image} />
                     ) : (
                         <Text style={styles.placeholderText}>No image selected</Text>
                     )}
-                </View>
+                </View> */}
 
                 {/* Image Upload Buttons */}
-                <Text style={styles.uploadlabel}>Capture Photo / Choose from Gallery</Text>
+                {/* <Text style={styles.uploadlabel}>Capture Photo / Choose from Gallery</Text>
                 <View style={styles.buttonRow}>
                     {Platform.OS === 'web' && (
                         <input
@@ -455,7 +682,18 @@ export default function CaseRecordForm({API_URL}) {
                     >
                         <Text style={styles.buttonText}>Upload Photo</Text>
                     </TouchableOpacity>
-                </View>
+                </View> */}
+
+                {renderImageSection("Dorsal Tongue", "dorsal")}
+                {renderImageSection("Ventral Tongue", "ventral")}
+                {renderImageSection("Left Buccal Mucosa", "leftBuccal")}
+                {renderImageSection("Right Buccal Mucosa", "rightBuccal")}
+                {renderImageSection("Upper Lip", "upperLip")}
+                {renderImageSection("Lower Lip", "lowerLip")}
+                {renderImageSection("Upper Arch", "upperArch")}
+                {renderImageSection("Lower Arch", "lowerArch")}
+
+
 
 
                 {/* Submit and Back Buttons */}
@@ -633,6 +871,10 @@ const styles = StyleSheet.create({
     photoButton: {
         backgroundColor: "#324066",
     },
+    predictButton: {
+        backgroundColor: "#9c9cdb",
+    },
+
     submitButton: {
         backgroundColor: "green",
     },
