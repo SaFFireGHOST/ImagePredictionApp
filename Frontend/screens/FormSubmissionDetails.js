@@ -22,22 +22,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
-const FormDetailsScreen = ({ route, navigation,API_URL }) => {
-  // const API_URL = 'http://localhost:8080/add-comment';
-  // const API_URL = 'http://10.0.2.2:8080/add-comment';
-
-  // const API_URL_2 = 'http://localhost:8080/get-comments';
-  // const API_URL_2 = 'http://10.0.2.2:8080/get_comments';
-
-
-
-
+const FormDetailsScreen = ({ route, navigation, API_URL }) => {
   const { submission } = route.params || {};
   const [isLoading, setIsLoading] = useState(false);
-  const [imageError, setImageError] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
   const [imageModalVisible, setImageModalVisible] = useState(false);
-  const [comments, setComments] = useState([]); // to hold the list of comments
-  const [newComment, setNewComment] = useState(''); // to hold input value
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
   const [editingIndex, setEditingIndex] = useState(null);
   const [editText, setEditText] = useState('');
 
@@ -45,16 +36,14 @@ const FormDetailsScreen = ({ route, navigation,API_URL }) => {
     try {
       const response = await fetch(`${API_URL}/get-comments/${submission.smitaId}`, { mode: 'cors' });
       const data = await response.json();
-      setComments(data.comments); // expects: [{ username: 'abc', comment: 'xyz' }, ...]
+      setComments(data.comments);
     } catch (error) {
       console.error('Error fetching comments:', error);
     }
   };
 
   useEffect(() => {
-    // if (submission?.id) {
     fetchComments();
-    // }
   }, []);
 
   const editComment = async (smitaId, commentIndex, newComment) => {
@@ -63,7 +52,7 @@ const FormDetailsScreen = ({ route, navigation,API_URL }) => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` // Ensure JWT token is sent
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
           comment_index: commentIndex,
@@ -75,7 +64,7 @@ const FormDetailsScreen = ({ route, navigation,API_URL }) => {
 
       if (response.ok) {
         console.log('Comment updated successfully:', data.updated_comment);
-        return data.updated_comment; // Return updated comment for UI update
+        return data.updated_comment;
       } else {
         console.error('Error updating comment:', data.message);
         return null;
@@ -86,15 +75,13 @@ const FormDetailsScreen = ({ route, navigation,API_URL }) => {
     }
   };
 
-
   const handleEditComment = async (smitaId, index, updatedText) => {
     const updatedComment = await editComment(smitaId, index, updatedText);
     if (updatedComment) {
-      // Update the comment in the UI (assuming `comments` is stored in state)
       setComments(prevComments => {
         const newComments = [...prevComments];
         newComments[index].comment = updatedText;
-        newComments[index].edited_timestamp = new Date().toISOString(); // Update timestamp
+        newComments[index].edited_timestamp = new Date().toISOString();
         return newComments;
       });
     }
@@ -119,15 +106,12 @@ const FormDetailsScreen = ({ route, navigation,API_URL }) => {
       setEditingIndex(null);
       setEditText('');
     }
-
   };
 
   const cancelEdit = () => {
     setEditingIndex(null);
     setEditText('');
   };
-
-
 
   // Get prediction color based on result
   const getPredictionColor = (prediction) => {
@@ -151,21 +135,19 @@ const FormDetailsScreen = ({ route, navigation,API_URL }) => {
   };
 
   const handleCommentSubmit = async () => {
-
     if (newComment.trim()) {
       const formData = new FormData();
       formData.append("Name", "admin1");
       formData.append("smitaId", submission.smitaId);
-
       formData.append("comment", newComment.trim());
-      console.log(newComment);
-      console.log("smita id is ", submission.smitaId);
+      
       const token = await AsyncStorage.getItem('authToken');
       if (!token) {
-        setLoading(false);
+        setIsLoading(false);
         Alert.alert("Unauthorized", "You are not logged in.");
         return;
       }
+      
       try {
         const response = await fetch(`${API_URL}/add-comment`, {
           method: 'POST',
@@ -183,7 +165,7 @@ const FormDetailsScreen = ({ route, navigation,API_URL }) => {
         }
 
         const result = await response.json();
-        setComments((prev) => [...prev, result.comment]); // result.comment should be: { username, comment }
+        setComments((prev) => [...prev, result.comment]);
         setNewComment('');
       } catch (error) {
         Alert.alert('Error', 'Unable to submit comment.');
@@ -192,8 +174,7 @@ const FormDetailsScreen = ({ route, navigation,API_URL }) => {
     } else {
       Alert.alert('Empty Comment', 'Please write something before submitting.');
     }
-
-  }
+  };
 
   // Share submission details
   const handleShare = async () => {
@@ -202,8 +183,17 @@ const FormDetailsScreen = ({ route, navigation,API_URL }) => {
 SMITA App Report:
 Patient: ${submission.prefix || ''} ${submission.firstName || ''} ${submission.lastName || ''}
 SMITA ID: ${submission.smitaId || 'N/A'}
-Prediction: ${submission.prediction || 'N/A'} (${submission.confidence || 'N/A'})
 Date: ${formatDate(submission.date)}
+
+Diagnostic Results:
+${submission.dorsal_prediction ? `Dorsal: ${submission.dorsal_prediction} (${submission.dorsal_confidence || 'N/A'})` : ''}
+${submission.ventral_prediction ? `Ventral: ${submission.ventral_prediction} (${submission.ventral_confidence || 'N/A'})` : ''}
+${submission.leftBuccal_prediction ? `Left Buccal: ${submission.leftBuccal_prediction} (${submission.leftBuccal_confidence || 'N/A'})` : ''}
+${submission.rightBuccal_prediction ? `Right Buccal: ${submission.rightBuccal_prediction} (${submission.rightBuccal_confidence || 'N/A'})` : ''}
+${submission.upperLip_prediction ? `Upper Lip: ${submission.upperLip_prediction} (${submission.upperLip_confidence || 'N/A'})` : ''}
+${submission.lowerLip_prediction ? `Lower Lip: ${submission.lowerLip_prediction} (${submission.lowerLip_confidence || 'N/A'})` : ''}
+${submission.upperArch_prediction ? `Upper Arch: ${submission.upperArch_prediction} (${submission.upperArch_confidence || 'N/A'})` : ''}
+${submission.lowerArch_prediction ? `Lower Arch: ${submission.lowerArch_prediction} (${submission.lowerArch_confidence || 'N/A'})` : ''}
       `;
 
       await Share.share({
@@ -239,10 +229,20 @@ Date: ${formatDate(submission.date)}
   ];
 
   const diagnosisInfo = [
-    {label:'Region',value:submission?.type || 'N/A'},
-    { label: 'Prediction', value: submission?.prediction || 'N/A' },
-    { label: 'Confidence', value: submission?.confidence || 'N/A' },
+    { label: 'Region', value: submission?.type || 'N/A' },
     { label: 'Date', value: formatDate(submission?.date) },
+  ];
+
+  // Define image regions to display
+  const imageRegions = [
+    { key: 'dorsal', label: 'Dorsal' },
+    { key: 'ventral', label: 'Ventral' },
+    { key: 'leftBuccal', label: 'Left Buccal' },
+    { key: 'rightBuccal', label: 'Right Buccal' },
+    { key: 'upperLip', label: 'Upper Lip' },
+    { key: 'lowerLip', label: 'Lower Lip' },
+    { key: 'upperArch', label: 'Upper Arch' },
+    { key: 'lowerArch', label: 'Lower Arch' }
   ];
 
   // If no submission data is provided
@@ -286,19 +286,6 @@ Date: ${formatDate(submission.date)}
             {submission.prefix || ''} {submission.firstName || ''} {submission.lastName || ''}
           </Text>
           <Text style={styles.patientId}>ID: {submission.smitaId || 'N/A'}</Text>
-        </View>
-
-        {/* Prediction Result */}
-        <View style={[styles.predictionContainer, { borderLeftColor: getPredictionColor(submission.prediction) }]}>
-          <Text style={styles.predictionLabel}>Diagnosis Result:</Text>
-          <View style={styles.predictionInfo}>
-            <Text style={[styles.predictionValue, { color: getPredictionColor(submission.prediction) }]}>
-              {submission.prediction || 'N/A'}
-            </Text>
-            <Text style={styles.confidenceValue}>
-              Confidence: {submission.confidence || 'N/A'}
-            </Text>
-          </View>
         </View>
 
         {/* Personal Information Section */}
@@ -349,9 +336,9 @@ Date: ${formatDate(submission.date)}
           </View>
         </View>
 
-        {/* Diagnosis Information Section */}
+        {/* Basic Diagnosis Information Section */}
         <View style={styles.infoSection}>
-          <Text style={styles.sectionTitle}>Diagnosis Information</Text>
+          <Text style={styles.sectionTitle}>Basic Diagnosis Information</Text>
           <View style={styles.infoCard}>
             {diagnosisInfo.map((item, index) => (
               <View key={index} style={[
@@ -359,58 +346,80 @@ Date: ${formatDate(submission.date)}
                 index === diagnosisInfo.length - 1 ? null : styles.infoRowBorder
               ]}>
                 <Text style={styles.infoLabel}>{item.label}</Text>
-                <Text style={[
-                  styles.infoValue,
-                  item.label === 'Prediction' ? { color: getPredictionColor(item.value) } : null
-                ]}>
-                  {item.value}
-                </Text>
+                <Text style={styles.infoValue}>{item.value}</Text>
               </View>
             ))}
           </View>
         </View>
 
-        {/* Image Section - Now displayed after all other information */}
-        {submission.image_url && (
-          <View style={styles.infoSection}>
-            <Text style={styles.sectionTitle}>Image</Text>
-            <TouchableOpacity
-              style={styles.imageContainer}
-              onPress={() => setImageModalVisible(true)}
-              activeOpacity={0.9}>
-              {isLoading && (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#007bff" />
-                </View>
-              )}
-              {imageError ? (
-                <View style={styles.errorImageContainer}>
-                  <Ionicons name="image-outline" size={50} color="#bdbdbd" />
-                  <Text style={styles.errorImageText}>Image could not be loaded</Text>
-                </View>
-              ) : (
-                <>
-                  <Image
-                    source={{ uri: submission.image_url }}
-                    style={styles.image}
-                    onLoadStart={() => setIsLoading(true)}
-                    onLoadEnd={() => setIsLoading(false)}
-                    onError={() => {
-                      setIsLoading(false);
-                      setImageError(true);
-                    }}
-                    resizeMode="contain"
-                  />
-                  <View style={styles.imageOverlay}>
-                    <Ionicons name="expand-outline" size={24} color="#fff" />
-                    <Text style={styles.imageOverlayText}>View Full Image</Text>
+        {/* Detailed Diagnosis Results with Images */}
+        <View style={styles.infoSection}>
+          <Text style={styles.sectionTitle}>Detailed Diagnosis Results</Text>
+          
+          {imageRegions.map(region => {
+            const imageUrl = submission[`${region.key}_image_url`];
+            const prediction = submission[`${region.key}_prediction`];
+            const confidence = submission[`${region.key}_confidence`];
+            
+            // Only show regions that have data
+            if (!imageUrl && !prediction) return null;
+            
+            return (
+              <View key={region.key} style={styles.diagnosisRegionContainer}>
+                <Text style={styles.diagnosisRegionTitle}>{region.label}</Text>
+                
+                {/* Prediction Result if available */}
+                {prediction && (
+                  <View style={[styles.predictionContainer, { borderLeftColor: getPredictionColor(prediction) }]}>
+                    <View style={styles.predictionInfo}>
+                      <Text style={[styles.predictionValue, { color: getPredictionColor(prediction) }]}>
+                        {prediction || 'N/A'}
+                      </Text>
+                      <Text style={styles.confidenceValue}>
+                        Confidence: {confidence || 'N/A'}
+                      </Text>
+                    </View>
                   </View>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
+                )}
+                
+                {/* Image if available */}
+                {imageUrl && (
+                  <TouchableOpacity
+                    style={styles.imageContainer}
+                    onPress={() => {
+                      setSelectedImage(imageUrl);
+                      setImageModalVisible(true);
+                    }}
+                    activeOpacity={0.9}>
+                    <Image
+                      source={{ uri: imageUrl }}
+                      style={styles.image}
+                      onLoadStart={() => setIsLoading(true)}
+                      onLoadEnd={() => setIsLoading(false)}
+                      onError={(e) => {
+                        setIsLoading(false);
+                        console.error("Image loading error:", e.nativeEvent.error);
+                      }}
+                      resizeMode="contain"
+                    />
+                    <View style={styles.imageOverlay}>
+                      <Ionicons name="expand-outline" size={24} color="#fff" />
+                      <Text style={styles.imageOverlayText}>View Full Image</Text>
+                    </View>
+                    
+                    {isLoading && (
+                      <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="#007bff" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })}
+        </View>
 
+        {/* Comments Section */}
         <View style={styles.infoSection}>
           <Text style={styles.sectionTitle}>Comments</Text>
 
@@ -480,7 +489,6 @@ Date: ${formatDate(submission.date)}
           </View>
         </View>
 
-
         {/* Bottom margin for better scrolling */}
         <View style={{ height: 20 }} />
       </ScrollView>
@@ -497,11 +505,13 @@ Date: ${formatDate(submission.date)}
             onPress={() => setImageModalVisible(false)}>
             <Ionicons name="close-circle" size={36} color="#fff" />
           </TouchableOpacity>
-          <Image
-            source={{ uri: submission.image_url }}
-            style={styles.modalImage}
-            resizeMode="contain"
-          />
+          {selectedImage && (
+            <Image
+              source={{ uri: selectedImage }}
+              style={styles.modalImage}
+              resizeMode="contain"
+            />
+          )}
         </View>
       </Modal>
     </SafeAreaView>
@@ -607,8 +617,8 @@ const styles = StyleSheet.create({
   predictionContainer: {
     backgroundColor: '#fff',
     borderRadius: 8,
-    marginBottom: 16,
-    padding: 16,
+    marginBottom: 12,
+    padding: 12,
     borderLeftWidth: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -616,12 +626,6 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  predictionLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#424242',
-    marginBottom: 8,
-  },
   predictionInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -636,78 +640,17 @@ const styles = StyleSheet.create({
     color: '#616161',
   },
   imageContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 16,
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: '#f0f0f0',
   },
   image: {
-    width: 300,
-    height: 300,
-    borderRadius: 10,
-    backgroundColor: '#f0f0f0',
-shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  predictionLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#424242',
-    marginBottom: 8,
-  },
-  predictionInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  predictionValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  confidenceValue: {
-    fontSize: 14,
-    color: '#616161',
-  },
-  imageContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  image: {
-    width: 300,
-    height: 300,
-    borderRadius: 10,
-    backgroundColor: '#f0f0f0',
-shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  predictionLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#424242',
-    marginBottom: 8,
-  },
-  predictionInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  predictionValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  confidenceValue: {
-    fontSize: 14,
-    color: '#616161',
-  },
-  imageContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  image: {
-    width: 300,
-    height: 300,
-    borderRadius: 10,
-    backgroundColor: '#f0f0f0',
+    width: '100%',
+    height: '100%',
   },
   imageOverlay: {
     position: 'absolute',
@@ -736,15 +679,25 @@ shadowOpacity: 0.1,
     alignItems: 'center',
     backgroundColor: 'rgba(245, 245, 245, 0.7)',
   },
-  errorImageContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+  diagnosisRegionContainer: {
+    marginBottom: 20,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  errorImageText: {
-    marginTop: 10,
-    color: '#757575',
-    textAlign: 'center',
+  diagnosisRegionTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#0d47a1',
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    paddingBottom: 8,
   },
   sectionTitle: {
     fontSize: 18,
@@ -848,6 +801,9 @@ shadowOpacity: 0.1,
     alignItems: 'flex-start',
     marginBottom: 8,
   },
+  commentContent: {
+    flex: 1,
+  },
   commentText: {
     color: '#212121',
     fontSize: 14,
@@ -876,7 +832,6 @@ shadowOpacity: 0.1,
     borderRadius: 20,
     marginLeft: 8,
   },
-
 });
 
 export default FormDetailsScreen;

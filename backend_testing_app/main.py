@@ -35,9 +35,12 @@ mail = Mail(app)
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
+
 # Connect to MongoDB
-client = MongoClient('mongodb://localhost:27017/')
-# client = MongoClient('mongodb+srv://mupparapukoushik:Shadow_slave@cluster0.wl4w8.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
+# client = MongoClient('mongodb://localhost:27017/')
+
+client = MongoClient('mongodb+srv://mupparapukoushik:Shadow_slave@cluster0.wl4w8.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
+
 db = client['auth_db']
 users = db['users']
 feedbacks = db['feedbacks']

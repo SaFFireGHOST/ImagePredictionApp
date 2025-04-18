@@ -9,6 +9,7 @@ import {
   StatusBar,
   Dimensions
 } from 'react-native';
+import { useNavigation } from "@react-navigation/native";
 // import { NavigationContainer } from '@react-navigation/native';
 // import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/Feather'; // Using Feather icons similar to Lucide
@@ -31,8 +32,10 @@ const DashboardLayout = ({ children }) => {
 
 // DashboardHeader Component
 const DashboardHeader = () => {
+  const navigation = useNavigation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const handleLogout = async () => {
+    console.log("helllo");
     await AsyncStorage.removeItem('authToken');
     navigation.navigate('LandingPage'); // Redirect to login screen
   };
