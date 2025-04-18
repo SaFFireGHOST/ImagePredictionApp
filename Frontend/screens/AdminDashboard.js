@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ErrorPopup from './ErrorPopup';
 
 // const API_URL = 'http://localhost:8080/admin/users';
 // const API_URL = 'http://10.0.2.2:8080/admin/users';
@@ -23,11 +24,26 @@ const AdminDashboard = ({ navigation, API_URL }) => {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
+  const [errorPopupVisible, setErrorPopupVisible] = useState(false);
+  const [errorPopupMessage, setErrorPopupMessage] = useState("");
+
+  const closeErrorPopup = () => {
+    setErrorPopupVisible(false);
+  };
 
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem('authToken');
     navigation.navigate('LandingPage'); // Redirect to login screen
+  };
+
+  const handle_token_expire = async () => {
+    await AsyncStorage.removeItem('authToken');
+    setErrorPopupMessage("Your Login has been expired , please Login again");
+    setErrorPopupVisible(true);
+    setTimeout(() => {
+      navigation.navigate('LandingPage');
+    }, 2500); // 2.5 seconds
   };
 
   const fetchUsers = async () => {
@@ -41,7 +57,10 @@ const AdminDashboard = ({ navigation, API_URL }) => {
         },
       });
       const data = await response.json();
-      if (response.ok) {
+      if (response.status === 440 && data.error === 'token_expired') {
+        await handle_token_expire();  // Handle expired token
+      }
+      else if (response.ok) {
         setUsers(data);
       } else {
         setError(data.message || 'Failed to fetch users');
@@ -193,6 +212,12 @@ const AdminDashboard = ({ navigation, API_URL }) => {
   return (
     <SafeAreaView style={styles.container}>
       {/* Logout Button (Top Right) */}
+      {/* Add ErrorPopup component */}
+      <ErrorPopup
+        visible={errorPopupVisible}
+        message={errorPopupMessage}
+        onClose={closeErrorPopup}
+      />
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutButtonText}>Log Out</Text>
       </TouchableOpacity>

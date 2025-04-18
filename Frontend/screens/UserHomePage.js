@@ -257,14 +257,14 @@ const UserHomePage = ({ navigation, API_URL }) => {
                 Overview
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
+            {/* <TouchableOpacity
               style={[styles.tab, activeTab === "predictions" && styles.activeTab]}
               onPress={() => setActiveTab("predictions")}
             >
               <Text style={[styles.tabText, activeTab === "predictions" && styles.activeTabText]}>
                 Predictions
               </Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             <TouchableOpacity
               style={[styles.tab, activeTab === "resources" && styles.activeTab]}
               onPress={() => setActiveTab("resources")}
@@ -313,7 +313,7 @@ const UserHomePage = ({ navigation, API_URL }) => {
                   </View>
                 </View>
 
-                <View style={styles.card}>
+                {/* <View style={styles.card}>
                   <View style={styles.cardHeaderBlue}>
                     <Text style={styles.cardTitle}>Previous Results</Text>
                     <Icon name="clock" size={16} color="#6b7280" />
@@ -329,7 +329,7 @@ const UserHomePage = ({ navigation, API_URL }) => {
                       <Text style={styles.buttonOutlineText}>View History</Text>
                     </TouchableOpacity>
                   </View>
-                </View>
+                </View> */}
 
                 <View style={styles.card}>
                   <View style={styles.cardHeaderBlue}>
@@ -785,7 +785,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 8,
-    flexDirection: 'row',
+    flexDirection: 'column',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderTopLeftRadius: 8,

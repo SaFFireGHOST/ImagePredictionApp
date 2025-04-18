@@ -48,11 +48,12 @@ const FormDetailsScreen = ({ route, navigation, API_URL }) => {
 
   const editComment = async (smitaId, commentIndex, newComment) => {
     try {
+      const token = await AsyncStorage.getItem('authToken');
       const response = await fetch(`${API_URL}/edit-comment/${smitaId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           comment_index: commentIndex,
